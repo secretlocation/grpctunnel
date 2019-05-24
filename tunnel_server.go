@@ -98,7 +98,6 @@ func (s *tunnelServer) serve() error {
 	defer cancel()
 	for {
 		in, err := s.stream.Recv()
-		fmt.Println("[tunnel_server.go][(s *tunnelServer) serve()] streamId is ", in.StreamId)
 		if err != nil {
 			if err == io.EOF {
 
@@ -108,6 +107,16 @@ func (s *tunnelServer) serve() error {
 
 			fmt.Println("Exited2: ", err)
 			return err
+		}
+		fmt.Println("[tunnel_server.go][(s *tunnelServer) serve()] streamId is ", in.StreamId)
+		str, err := s.getStream(in.StreamId)
+		// if err != nil {
+		// 	fmt.Println("Exited3 ", err)
+		// 	return err
+		// }
+		if err == nil {
+			str.acceptClientFrame(in.Frame)
+			continue
 		}
 
 		if f, ok := in.Frame.(*ClientToServer_NewStream); ok {
@@ -148,13 +157,6 @@ func (s *tunnelServer) serve() error {
 			})
 			continue
 		}
-
-		str, err := s.getStream(in.StreamId)
-		if err != nil {
-			fmt.Println("Exited3 ", err)
-			return err
-		}
-		str.acceptClientFrame(in.Frame)
 	}
 }
 

@@ -67,7 +67,7 @@ func (s *TunnelServer) OpenReverseTunnel(stream TunnelService_OpenReverseTunnelS
 	if s.NoReverseTunnels {
 		return status.Error(codes.Unimplemented, "reverse tunnels not supported")
 	}
-
+	fmt.Println("[service.go][OpenReverseTunnel] NewReverseChannel")
 	ch := NewReverseChannel(stream)
 	defer ch.Close()
 
