@@ -1,6 +1,7 @@
 package grpctunnel
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/fullstorydev/grpchan"
@@ -56,6 +57,8 @@ func (s *TunnelServer) OpenTunnel(stream TunnelService_OpenTunnelServer) error {
 	if len(s.handlers) == 0 {
 		return status.Error(codes.Unimplemented, "forward tunnels not supported")
 	}
+
+	fmt.Println("[service.go][OpenTunnel] called...")
 
 	return ServeTunnel(stream, s.handlers)
 }

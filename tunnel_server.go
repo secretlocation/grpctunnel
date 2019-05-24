@@ -98,10 +98,15 @@ func (s *tunnelServer) serve() error {
 	defer cancel()
 	for {
 		in, err := s.stream.Recv()
+		fmt.Println("[tunnel_server.go][(s *tunnelServer) serve()] streamId is ", in.StreamId)
 		if err != nil {
 			if err == io.EOF {
+
+				fmt.Println("Exited1 ", err)
 				return nil
 			}
+
+			fmt.Println("Exited2: ", err)
 			return err
 		}
 
@@ -124,8 +129,29 @@ func (s *tunnelServer) serve() error {
 			continue
 		}
 
+		if f, ok := in.Frame.(*ClientToServer_RequestMessage); ok {
+			recvMessage := string(f.RequestMessage.Data)
+			fmt.Println("[tunnel_server.go][(s *tunnelServer) serve()] the message data string is ", recvMessage)
+
+			responseMsgStr := fmt.Sprintf("this is response message from go server with streamId: %d ", in.StreamId)
+			fmt.Println("Sending...:", responseMsgStr)
+			responseMsg := []byte(responseMsgStr)
+
+			s.stream.Send(&ServerToClient{
+				StreamId: in.StreamId,
+				Frame: &ServerToClient_ResponseMessage{
+					ResponseMessage: &MessageData{
+						Size: int32(len(responseMsg)),
+						Data: responseMsg,
+					},
+				},
+			})
+			continue
+		}
+
 		str, err := s.getStream(in.StreamId)
 		if err != nil {
+			fmt.Println("Exited3 ", err)
 			return err
 		}
 		str.acceptClientFrame(in.Frame)
