@@ -47,19 +47,19 @@ func TestTunnelServer(t *testing.T) {
 
 	cli := NewTunnelServiceClient(cc)
 
-	t.Run("forward", func(t *testing.T) {
-		checkForGoroutineLeak(t, func() {
-			tunnel, err := cli.OpenTunnel(context.Background())
-			if err != nil {
-				t.Fatalf("failed to open tunnel: %v", err)
-			}
+	// t.Run("forward", func(t *testing.T) {
+	// 	checkForGoroutineLeak(t, func() {
+	// 		tunnel, err := cli.OpenTunnel(context.Background())
+	// 		if err != nil {
+	// 			t.Fatalf("failed to open tunnel: %v", err)
+	// 		}
 
-			ch := NewChannel(tunnel)
-			defer ch.Close()
+	// 		ch := NewChannel(tunnel)
+	// 		defer ch.Close()
 
-			grpchantesting.RunChannelTestCases(t, ch, true)
-		})
-	})
+	// 		grpchantesting.RunChannelTestCases(t, ch, true)
+	// 	})
+	// })
 
 	t.Run("reverse", func(t *testing.T) {
 		checkForGoroutineLeak(t, func() {
@@ -67,6 +67,8 @@ func TestTunnelServer(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to open reverse tunnel: %v", err)
 			}
+
+			//fmt.Println("the tunnel is ", tunnel)
 
 			// client now acts as the server
 			handlerMap := grpchan.HandlerMap{}

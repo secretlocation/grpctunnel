@@ -123,17 +123,17 @@ func (s *tunnelServer) serve() error {
 			if err, ok := s.createStream(ctx, in.StreamId, f.NewStream); err != nil {
 				if !ok {
 					return err
-				} else {
-					st, _ := status.FromError(err)
-					s.stream.Send(&ServerToClient{
-						StreamId: in.StreamId,
-						Frame: &ServerToClient_CloseStream{
-							CloseStream: &CloseStream{
-								Status: st.Proto(),
-							},
-						},
-					})
 				}
+				st, _ := status.FromError(err)
+				s.stream.Send(&ServerToClient{
+					StreamId: in.StreamId,
+					Frame: &ServerToClient_CloseStream{
+						CloseStream: &CloseStream{
+							Status: st.Proto(),
+						},
+					},
+				})
+
 			}
 			continue
 		}
@@ -398,7 +398,7 @@ func (st *tunnelServerStream) SendMsg(m interface{}) error {
 	}
 
 	if !st.isServerStream && st.numSent == 1 {
-		return status.Errorf(codes.Internal, "Already sent response for non-server-stream method %d", st.method)
+		return status.Errorf(codes.Internal, "Already sent response for non-server-stream method %s", st.method)
 	}
 	st.numSent++
 
@@ -475,7 +475,7 @@ func (st *tunnelServerStream) readMsg() (data []byte, err error, ok bool) {
 		// and fail RPC if so (due to bad input)
 		_, err, ok := st.readMsgLocked()
 		if err == nil {
-			err = status.Errorf(codes.InvalidArgument, "Already received request for non-client-stream method %d", st.method)
+			err = status.Errorf(codes.InvalidArgument, "Already received request for non-client-stream method %s", st.method)
 			st.readErr = err
 			return nil, err, false
 		}

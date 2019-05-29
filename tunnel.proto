@@ -98,6 +98,9 @@ message ServerToClient {
         // given stream ID until the ID is re-used (e.g. a NewStream message is
         // received that creates another stream with the same ID).
         CloseStream close_stream = 5;
+
+        //New var created to send the server information to grpctunnel (go project)
+        MessageData server_info = 6;
     }
 }
 

@@ -3,6 +3,9 @@ package grpctunnel
 import (
 	"errors"
 	"fmt"
+	"io"
+	"sync"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
@@ -11,8 +14,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
-	"io"
-	"sync"
 )
 
 func NewChannel(stream TunnelService_OpenTunnelClient) *TunnelChannel {
@@ -22,6 +23,7 @@ func NewChannel(stream TunnelService_OpenTunnelClient) *TunnelChannel {
 func NewReverseChannel(stream TunnelService_OpenReverseTunnelServer) *ReverseTunnelChannel {
 	p, _ := peer.FromContext(stream.Context())
 	md, _ := metadata.FromIncomingContext(stream.Context())
+	fmt.Println("[tunnel_client.go][NewReverseChannel] call newTunnelChannel")
 	ch := newTunnelChannel(stream, nil)
 	return &ReverseTunnelChannel{
 		TunnelChannel:  ch,
@@ -65,6 +67,7 @@ func newTunnelChannel(stream tunnelStreamClient, tearDown func() error) *TunnelC
 		tearDown: tearDown,
 		streams:  map[int64]*tunnelClientStream{},
 	}
+	fmt.Println("[tunnel_client.go][newTunnelChannel] call go c.recvLoop()")
 	go c.recvLoop()
 	return c
 }
@@ -241,6 +244,19 @@ func (c *TunnelChannel) recvLoop() {
 			c.close(err)
 			return
 		}
+
+		if f, ok := in.Frame.(*ServerToClient_ServerInfo); ok {
+			if !ok {
+				fmt.Println("[tunnel_client.go][go c.recvLoop()] returning because there is an error with in.Frame.(*ServerToClient_ServerInfo)")
+				return
+			}
+			recvMessage := string(f.ServerInfo.Data)
+			fmt.Println("[tunnel_client.go][(s *tunnelServer) serve()] the message data string is ", recvMessage)
+			//store this station id in a datastructure (map) <id,stream>
+			continue
+		}
+
+		fmt.Println("[tunnel_client.go][go c.recvLoop()] call c.getStream(in.StreamId)")
 		str, err := c.getStream(in.StreamId)
 		if err != nil {
 			c.close(err)
@@ -253,6 +269,12 @@ func (c *TunnelChannel) recvLoop() {
 func (c *TunnelChannel) getStream(streamID int64) (*tunnelClientStream, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
+	fmt.Println("[tunnel_client.go][getStream] streamID is: ", streamID)
+
+	for k := range c.streams {
+		fmt.Printf("[tunnel_client.go][getStream] key[%d] \n", k)
+	}
 
 	target, ok := c.streams[streamID]
 	if !ok {
@@ -401,7 +423,7 @@ func (st *tunnelClientStream) SendMsg(m interface{}) error {
 	defer st.writeMu.Unlock()
 
 	if !st.isClientStream && st.numSent == 1 {
-		return status.Errorf(codes.Internal, "Already sent response for non-server-stream method %d", st.method)
+		return status.Errorf(codes.Internal, "Already sent response for non-server-stream method %s", st.method)
 	}
 	st.numSent++
 
@@ -478,7 +500,7 @@ func (st *tunnelClientStream) readMsg() (data []byte, err error, ok bool) {
 		// and fail RPC if so (due to bad input)
 		_, err, ok := st.readMsgLocked()
 		if err == nil {
-			err = status.Errorf(codes.Internal, "Server sent multiple responses for non-server-stream method %d", st.method)
+			err = status.Errorf(codes.Internal, "Server sent multiple responses for non-server-stream method %s", st.method)
 			st.readErr = err
 			return nil, err, false
 		}
